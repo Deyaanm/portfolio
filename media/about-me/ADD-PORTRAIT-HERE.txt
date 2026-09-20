@@ -1,0 +1,8 @@
+Add your portrait to this folder using one of these exact filenames:
+
+portrait.jpg
+portrait.jpeg
+portrait.png
+portrait.webp
+
+The About Me page will find it automatically and display it centered.

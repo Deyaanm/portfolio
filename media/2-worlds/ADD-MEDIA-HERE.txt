@@ -1,0 +1,1 @@
+Add the video or GIF for 2 Worlds to this folder. A video can be configured to play exactly three times.
