@@ -494,11 +494,93 @@
 
       .media-video { cursor: default; }
 
+      @keyframes mediaLoadingFlash {
+        0%, 49% { color: var(--ink); }
+        50%, 100% { color: var(--red); }
+      }
+
+      .media-load-wrap {
+        position: relative;
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .media-loading,
+      .lightbox-loading {
+        z-index: 0;
+        margin: 0;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+        line-height: 1;
+        text-align: center;
+        pointer-events: none;
+        animation: mediaLoadingFlash 900ms steps(1, end) infinite;
+      }
+
+      .media-loading {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      .media-load-wrap > .media-frame {
+        position: relative;
+        z-index: 1;
+        opacity: 0;
+      }
+
+      .media-load-wrap.is-loaded > .media-frame { opacity: 1; }
+      .media-load-wrap.is-loaded > .media-loading { display: none; }
+
+      .media-load-wrap.is-error > .media-loading {
+        color: var(--red);
+        animation: none;
+      }
+
+      .direct-media-load { position: relative; }
+
+      .direct-media-load > .media-frame {
+        position: relative;
+        z-index: 1;
+        opacity: 0;
+      }
+
+      .direct-media-load.is-loaded > .media-frame { opacity: 1; }
+      .direct-media-load.is-loaded > .media-loading { display: none; }
+
+      .direct-media-load.is-error > .media-loading {
+        color: var(--red);
+        animation: none;
+      }
+
       .content-block > .media-frame {
         width: min(860px, 100%);
       }
 
+      .content-block > .media-load-wrap {
+        width: min(860px, 100%);
+      }
+
       #page-artwork .content-block > .media-frame {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        object-fit: contain;
+        object-position: left top;
+      }
+
+      #page-artwork .content-block > .media-load-wrap {
+        width: 100%;
+        height: 100%;
+      }
+
+      #page-artwork .content-block > .media-load-wrap > .media-frame {
         width: 100%;
         height: 100%;
         max-height: none;
@@ -633,12 +715,23 @@
       }
 
       .lightbox-image {
+        grid-area: 1 / 1;
         display: block;
         width: auto;
         height: auto;
         max-width: calc(100vw - var(--lightbox-side) - var(--lightbox-side));
         max-height: calc(100dvh - var(--lightbox-pad) - var(--lightbox-pad));
         object-fit: contain;
+        opacity: 0;
+      }
+
+      .lightbox-loading { grid-area: 1 / 1; }
+      .media-lightbox.is-media-loaded .lightbox-image { opacity: 1; }
+      .media-lightbox.is-media-loaded .lightbox-loading { display: none; }
+
+      .media-lightbox.is-media-error .lightbox-loading {
+        color: var(--red);
+        animation: none;
       }
 
       .lightbox-nav {
@@ -700,6 +793,7 @@
 
       .detail-link {
         display: inline-block;
+        align-self: flex-start;
         margin-top: 1.2em;
         color: var(--red);
         text-decoration: none;
@@ -727,10 +821,22 @@
         }
         .option-nav { width: calc(100vw - 20px); }
         #page-artwork .detail-page { overflow: auto; }
+        .detail-title { padding-right: 4.5em; }
+        .detail-page > .detail-link[data-back] {
+          position: fixed;
+          top: max(10px, env(safe-area-inset-top));
+          right: max(10px, env(safe-area-inset-right));
+          z-index: 45;
+          margin: 0;
+          padding: 2px 3px;
+          color: var(--red);
+          background: var(--paper);
+        }
         #page-artwork .media-grid { grid-template-columns: 1fr; grid-template-rows: none; height: auto; }
         #page-artwork .media-item { display: block; aspect-ratio: auto; }
         #page-artwork .media-image-wrap { height: auto; }
         #page-artwork .media-grid .media-frame { position: static; height: auto; }
+        #page-artwork .media-load-wrap:not(.is-loaded):not(.is-error) { min-height: min(45dvh, 420px); }
         .media-frame { max-height: none; }
         #page-artwork .cathedral-random-grid {
           height: calc(100dvh - 110px);
@@ -751,6 +857,13 @@
         #page-option .detail-page { overflow: auto; }
         .option-content { flex: 0 0 auto; min-height: calc(100dvh - 120px); }
         .about-portrait { max-width: 100%; max-height: 58dvh; }
+        .media-lightbox { --lightbox-side: 52px; }
+        .lightbox-prev { left: env(safe-area-inset-left); }
+        .lightbox-next { right: env(safe-area-inset-right); }
+        .lightbox-exit {
+          top: max(10px, env(safe-area-inset-top));
+          left: max(10px, env(safe-area-inset-left));
+        }
       }
     </style>
   </head>
@@ -834,6 +947,7 @@
     <div class="media-lightbox" id="media-lightbox" aria-hidden="true" role="dialog" aria-label="Fullscreen image viewer">
       <button class="lightbox-exit" type="button" id="lightbox-exit">exit</button>
       <button class="lightbox-nav lightbox-prev" type="button" id="lightbox-prev" aria-label="Previous image" hidden>-</button>
+      <p class="lightbox-loading" id="lightbox-loading" role="status">MEDIA LOADING...</p>
       <img class="lightbox-image" id="lightbox-image" alt="">
       <button class="lightbox-nav lightbox-next" type="button" id="lightbox-next" aria-label="Next image" hidden>-</button>
     </div>
@@ -922,6 +1036,10 @@
                 "media/cathedral/IMG_1323.jpeg",
                 "media/cathedral/IMG_1327.jpeg",
                 "media/cathedral/IMG_1719.jpeg",
+                "media/cathedral/IMG_2359.jpeg",
+                "media/cathedral/IMG_2429.jpeg",
+                "media/cathedral/IMG_2566.jpeg",
+                "media/cathedral/IMG_2755.jpeg",
                 "media/cathedral/IMG_3360.jpeg",
                 "media/cathedral/IMG_3404.jpeg",
                 "media/cathedral/IMG_3965.jpeg",
@@ -1088,9 +1206,23 @@
           descriptionPlacement: "caption-right",
           media: [
             {
-              type: "image",
-              src: "media/y-intersection/yintsct.JPG",
-              alt: "Y- Intersection"
+              type: "gallery",
+              columns: 2,
+              items: [
+                {
+                  type: "image",
+                  src: "media/y-intersection/yintsct.JPG",
+                  alt: "Y-Intersection drawing"
+                },
+                {
+                  type: "video",
+                  src: "media/y-intersection/Untitled_Artwork.mov",
+                  autoplay: true,
+                  muted: true,
+                  controls: false,
+                  loop: true
+                }
+              ]
             }
           ]
         },
@@ -1196,6 +1328,7 @@
       const artworkBySlug = Object.fromEntries(artworkData.map(item => [item.slug, item]));
       const lightbox = document.getElementById("media-lightbox");
       const lightboxImage = document.getElementById("lightbox-image");
+      const lightboxLoading = document.getElementById("lightbox-loading");
       const lightboxExit = document.getElementById("lightbox-exit");
       const lightboxPrev = document.getElementById("lightbox-prev");
       const lightboxNext = document.getElementById("lightbox-next");
@@ -1351,8 +1484,16 @@
         const item = lightboxItems[lightboxIndex];
         if (!item) return;
 
+        lightbox.classList.remove("is-media-loaded", "is-media-error");
+        lightboxLoading.textContent = "MEDIA LOADING...";
         lightboxImage.src = item.src;
         lightboxImage.alt = item.alt;
+
+        requestAnimationFrame(() => {
+          if (!lightboxImage.complete) return;
+          lightbox.classList.add(lightboxImage.naturalWidth ? "is-media-loaded" : "is-media-error");
+          if (!lightboxImage.naturalWidth) lightboxLoading.textContent = "MEDIA UNAVAILABLE";
+        });
 
         const hasMultipleImages = lightboxItems.length > 1;
         lightboxPrev.hidden = !hasMultipleImages;
@@ -1387,6 +1528,7 @@
 
       function closeLightbox() {
         lightbox.classList.remove("is-open");
+        lightbox.classList.remove("is-media-loaded", "is-media-error");
         lightbox.setAttribute("aria-hidden", "true");
         lightboxImage.removeAttribute("src");
         lightboxImage.alt = "";
@@ -1397,6 +1539,52 @@
         document.body.style.overflow = currentPage === "home" ? "hidden" : "auto";
       }
 
+      lightboxImage.addEventListener("load", () => {
+        lightbox.classList.remove("is-media-error");
+        lightbox.classList.add("is-media-loaded");
+      });
+
+      lightboxImage.addEventListener("error", () => {
+        lightbox.classList.remove("is-media-loaded");
+        lightbox.classList.add("is-media-error");
+        lightboxLoading.textContent = "MEDIA UNAVAILABLE";
+      });
+
+      function appendLoadingMedia(wrapper, media, readyEvents, containerClass = "media-load-wrap") {
+        wrapper.classList.add(containerClass);
+        const loading = document.createElement("p");
+        loading.className = "media-loading";
+        loading.setAttribute("role", "status");
+        loading.textContent = "MEDIA LOADING...";
+
+        const markLoaded = () => {
+          wrapper.classList.remove("is-error");
+          wrapper.classList.add("is-loaded");
+        };
+
+        const markError = () => {
+          wrapper.classList.remove("is-loaded");
+          wrapper.classList.add("is-error");
+          loading.textContent = "MEDIA UNAVAILABLE";
+        };
+
+        readyEvents.forEach(eventName => media.addEventListener(eventName, markLoaded, { once: true }));
+        media.addEventListener("error", markError, { once: true });
+        wrapper.append(loading, media);
+
+        requestAnimationFrame(() => {
+          if (media instanceof HTMLImageElement && media.complete) {
+            if (media.naturalWidth) markLoaded();
+            else markError();
+          }
+          if (media instanceof HTMLVideoElement && media.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            markLoaded();
+          }
+        });
+
+        return wrapper;
+      }
+
       function makeMediaImage(src, alt = "") {
         const img = document.createElement("img");
         img.className = "media-frame";
@@ -1405,6 +1593,30 @@
         img.loading = "lazy";
         img.addEventListener("click", () => openLightbox(img));
         return img;
+      }
+
+      function makeMediaVideo(item) {
+        const video = document.createElement("video");
+        video.className = "media-frame media-video";
+        video.src = item.src;
+        video.controls = item.controls !== false;
+        video.playsInline = true;
+        video.preload = "auto";
+        video.autoplay = Boolean(item.autoplay);
+        video.muted = Boolean(item.muted);
+        video.loop = Boolean(item.loop);
+        if (item.muted) video.setAttribute("muted", "");
+        if (item.poster) video.poster = item.poster;
+        if (!item.loop && item.loopCount > 1) {
+          let completedPlays = 0;
+          video.addEventListener("ended", () => {
+            completedPlays += 1;
+            if (completedPlays >= item.loopCount) return;
+            video.currentTime = 0;
+            video.play().catch(() => {});
+          });
+        }
+        return video;
       }
 
       function renderCaption(text) {
@@ -1432,7 +1644,7 @@
 
         if (item.type === "image" || item.type === "gif") {
           const img = makeMediaImage(item.src, item.alt || "");
-          block.appendChild(img);
+          appendLoadingMedia(block, img, ["load"], "direct-media-load");
           const caption = renderCaption(item.caption);
           if (caption) block.appendChild(caption);
           return block;
@@ -1450,8 +1662,11 @@
             figure.className = "media-item";
             const imageWrap = document.createElement("div");
             imageWrap.className = "media-image-wrap";
-            const img = makeMediaImage(image.src, image.alt || "");
-            imageWrap.appendChild(img);
+            const media = image.type === "video"
+              ? makeMediaVideo(image)
+              : makeMediaImage(image.src, image.alt || "");
+            const readyEvents = image.type === "video" ? ["loadeddata", "canplay"] : ["load"];
+            appendLoadingMedia(imageWrap, media, readyEvents);
             figure.appendChild(imageWrap);
             const imageCaption = renderCaption(image.caption);
             if (imageCaption) figure.appendChild(imageCaption);
@@ -1464,27 +1679,8 @@
         }
 
         if (item.type === "video") {
-          const video = document.createElement("video");
-          video.className = "media-frame media-video";
-          video.src = item.src;
-          video.controls = item.controls !== false;
-          video.playsInline = true;
-          video.preload = "auto";
-          video.autoplay = Boolean(item.autoplay);
-          video.muted = Boolean(item.muted);
-          video.loop = Boolean(item.loop);
-          if (item.muted) video.setAttribute("muted", "");
-          if (item.poster) video.poster = item.poster;
-          if (!item.loop && item.loopCount > 1) {
-            let completedPlays = 0;
-            video.addEventListener("ended", () => {
-              completedPlays += 1;
-              if (completedPlays >= item.loopCount) return;
-              video.currentTime = 0;
-              video.play().catch(() => {});
-            });
-          }
-          block.appendChild(video);
+          const video = makeMediaVideo(item);
+          appendLoadingMedia(block, video, ["loadeddata", "canplay"], "direct-media-load");
           const caption = renderCaption(item.caption);
           if (caption) block.appendChild(caption);
           return block;
@@ -1637,7 +1833,75 @@
         }
       }
 
-      function goHome() { showPage("home"); }
+      function routeUrl(name, params = {}) {
+        const base = `${window.location.pathname}${window.location.search}`;
+        if (name === "artwork" && artworkBySlug[params.slug]) {
+          return `${base}#artwork/${encodeURIComponent(params.slug)}`;
+        }
+        if (name === "option" && optionData[params.section]) {
+          return `${base}#option/${encodeURIComponent(params.section)}`;
+        }
+        return base;
+      }
+
+      function routeFromLocation() {
+        const [name, encodedValue = ""] = window.location.hash.slice(1).split("/");
+        let value = "";
+        try { value = decodeURIComponent(encodedValue); } catch (error) { value = encodedValue; }
+
+        if (name === "artwork" && artworkBySlug[value]) {
+          return { name: "artwork", params: { slug: value } };
+        }
+        if (name === "option" && optionData[value]) {
+          return { name: "option", params: { section: value } };
+        }
+        return { name: "home", params: {} };
+      }
+
+      function navigateToPage(name, params = {}) {
+        const depth = Number(history.state?.portfolioDepth || 0) + 1;
+        history.pushState(
+          { portfolioRoute: true, portfolioDepth: depth, name, params },
+          "",
+          routeUrl(name, params)
+        );
+        showPage(name, params);
+      }
+
+      function goHome() {
+        if (currentPage === "home") return;
+        const depth = Number(history.state?.portfolioDepth || 0);
+        if (history.state?.portfolioRoute && depth > 0) {
+          history.back();
+          return;
+        }
+
+        const params = {};
+        history.replaceState(
+          { portfolioRoute: true, portfolioDepth: 0, name: "home", params },
+          "",
+          routeUrl("home", params)
+        );
+        showPage("home", params);
+      }
+
+      function initializeRouting() {
+        const route = routeFromLocation();
+        history.replaceState(
+          { portfolioRoute: true, portfolioDepth: 0, name: route.name, params: route.params },
+          "",
+          routeUrl(route.name, route.params)
+        );
+        showPage(route.name, route.params);
+      }
+
+      window.addEventListener("popstate", event => {
+        if (lightbox.classList.contains("is-open")) closeLightbox();
+        const route = event.state?.portfolioRoute
+          ? { name: event.state.name, params: event.state.params || {} }
+          : routeFromLocation();
+        showPage(route.name || "home", route.params || {});
+      });
 
       lightboxExit.addEventListener("click", closeLightbox);
       lightboxPrev.addEventListener("click", () => moveLightbox(-1));
@@ -1654,8 +1918,8 @@
         e.preventDefault();
         const target = el.dataset.nav;
         if (target === "home") { goHome(); return; }
-        if (target === "option") { showPage("option", { section: el.dataset.section }); return; }
-        if (target === "artwork") { showPage("artwork", { slug: el.dataset.slug }); return; }
+        if (target === "option") { navigateToPage("option", { section: el.dataset.section }); return; }
+        if (target === "artwork") { navigateToPage("artwork", { slug: el.dataset.slug }); return; }
       });
 
 
@@ -1815,7 +2079,7 @@
           g.addEventListener("keydown", (e) => {
             if (e.key !== "Enter" && e.key !== " ") return;
             e.preventDefault();
-            showPage("artwork", { slug: artwork.slug });
+            navigateToPage("artwork", { slug: artwork.slug });
           });
 
           const text = createSvgElement("text", {
@@ -1916,10 +2180,10 @@
 
       function openCurrentSelection() {
         if (currentPage !== "home") return;
-        if (state.activeArea === "wheel") { showPage("artwork", { slug: artworks[state.highlightedArtwork].slug }); return; }
+        if (state.activeArea === "wheel") { navigateToPage("artwork", { slug: artworks[state.highlightedArtwork].slug }); return; }
         if (state.optionIndex >= 0) {
           const sec = options[state.optionIndex].dataset.section;
-          showPage("option", { section: sec });
+          navigateToPage("option", { section: sec });
         }
       }
 
@@ -2105,6 +2369,7 @@
 
       buildWheel();
       render();
+      initializeRouting();
     </script>
   </body>
 </html>
