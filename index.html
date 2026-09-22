@@ -874,7 +874,7 @@
       <main class="site-shell" aria-label="DEYAAN MUDAKAVI portfolio">
         <header class="masthead" aria-label="Portfolio header">
           <h1>DEYAAN MUDAKAVI</h1>
-          <p class="nav-hint" aria-hidden="true">USE ARROWS AND SCROLL TO NAVIGATE</p>
+          <p class="nav-hint" aria-hidden="true">SCROLL &amp; CLICK TO NAVIGATE</p>
         </header>
 
         <nav class="option-nav" aria-label="Portfolio sections">
@@ -2259,16 +2259,6 @@
         star.addEventListener("touchend",  tapStar, { passive: false });
         star.addEventListener("click",     tapStar);
       });
-
-      /* also update the nav-hint text on narrow screens */
-      (function updateNavHint() {
-        const hint = document.querySelector(".nav-hint");
-        if (!hint) return;
-        const isTouch = window.matchMedia("(pointer: coarse)").matches;
-        hint.textContent = isTouch
-          ? "SWIPE · TAP · CLICK TITLES TO NAVIGATE"
-          : "USE ARROWS AND SCROLL TO NAVIGATE";
-      })();
 
       /* ── TOUCH SWIPE: spin the wheel by dragging anywhere on screen ── */
       (function initTouchSpin() {
