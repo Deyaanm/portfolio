@@ -1454,10 +1454,19 @@
             while (token === cathedralRunToken && nextIndex >= 0) {
               activeIndexes[slotIndex] = nextIndex;
               pendingIndexes[slotIndex] = -1;
+              image.style.transition = "none";
+              image.style.opacity = "0";
               image.src = sources[nextIndex];
               image.alt = `Cathedral image ${nextIndex + 1}`;
+              if (typeof image.decode === "function") {
+                try {
+                  await image.decode();
+                } catch (error) {
+                  // The image's normal load/error handling remains the fallback.
+                }
+              }
+              if (token !== cathedralRunToken) return;
               markCathedralIndexUsed(nextIndex);
-              image.style.transition = "none";
               image.style.opacity = "1";
               image.getBoundingClientRect();
               requestAnimationFrame(() => {
@@ -1471,9 +1480,11 @@
               const candidateIndex = await takeCathedralIndex(excluded);
               if (candidateIndex < 0 || token !== cathedralRunToken) return;
               pendingIndexes[slotIndex] = candidateIndex;
-              preloadCathedralImage(sources[candidateIndex]);
-              const stillActive = await fadeFinished;
+              const candidateReady = preloadCathedralImage(sources[candidateIndex]);
+              const [stillActive] = await Promise.all([fadeFinished, candidateReady]);
               if (!stillActive || token !== cathedralRunToken) return;
+              image.style.transition = "none";
+              image.style.opacity = "0";
               nextIndex = candidateIndex;
             }
           }
